@@ -1,40 +1,35 @@
-CREATE OR REPLACE FUNCTION fgiski.complex_program_update()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-	begin
-		--Check value in id_program
-		if new.id_programs is not null then
-			new.complex_program := True;
-		else new.complex_program := false;
-		end if;	
-		return new;
-	end;
-$function$
-;
-
---
-CREATE OR REPLACE FUNCTION public.state_history_insert()
+CREATE OR REPLACE FUNCTION "RAW".insert_new_merchants()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
 	BEGIN
-		IF tg_op = 'INSERT' THEN 
-			-- Insert new status into public.documents_id_doc_status_s for history
-			INSERT INTO public.documents_id_doc_status_s 
-			(id_documents, id_doc_status)
-			VALUES
-			(NEW.id, NEW.id_doc_status); 		
+--		IF tg_op = 'INSERT' THEN 
+			-- Check values in merchant_list
+		IF NEW.merchant IS NOT NULL AND (SELECT id
+			  FROM "RAW".merchant_list ml
+			 WHERE ml.merchant_name = NEW.merchant) IS NULL
+			 THEN 
+			 INSERT INTO "RAW".merchant_list
+			 (merchant_name)
+			 VALUES
+			 (NEW.merchant);
 		END IF;
-		return new;
-	end;
+--		END IF;
+		RETURN NEW;
+	END;
 $function$
 ;
 
 
+CREATE TRIGGER insert_new_merchants AFTER
+INSERT
+    OR
+UPDATE
+    ON
+    "RAW".table_test FOR EACH ROW
+    WHEN ((pg_trigger_depth() = 0)) EXECUTE FUNCTION "RAW".insert_new_merchants();
+   
 
-create trigger state_history_insert after
-insert
-    on
-    public.documents for each row
-    when ((pg_trigger_depth() = 0)) execute function state_history_insert();
+ALTER TABLE "RAW".table_test ENABLE TRIGGER insert_new_merchants;
+
+
